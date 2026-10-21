@@ -10,7 +10,7 @@ assert.ok(start >= 0 && end > start, 'VCF exporter is present');
 const scope = { $: () => ({ value: '' }) };
 vm.createContext(scope);
 vm.runInContext(source.slice(start, end), scope);
-const parse = value => scope.phoneEntries(value).map(x => ({ number: x.number, type: x.type }));
+const parse = value => JSON.parse(JSON.stringify(scope.phoneEntries(value)));
 const emails = value => [...scope.emailEntries(value)];
 
 test('reproduced client case: slash separates two phones instead of one TEL', () => {
