@@ -15,7 +15,7 @@ function identityKeys(c){
   for(const {number} of phoneEntries(c.phone)){const digits=number.replace(/\D/g,'');if(digits.length>=7)keys.push('phone:'+digits)}
   return keys;
 }
-function sameContact(a,b){const ak=identityKeys(a),bk=new Set(identityKeys(b));return ak.some(k=>bk.has(k))}
+function sameContact(a,b){const an=String(a.name||'').trim().replace(/\s+/g,' ').toLowerCase(),bn=String(b.name||'').trim().replace(/\s+/g,' ').toLowerCase();if(an&&bn&&an!==bn)return false;const ak=identityKeys(a),bk=new Set(identityKeys(b));if(an&&bn&&an===bn){const ao=String(a.company||'').trim().toLowerCase(),bo=String(b.company||'').trim().toLowerCase();if(!ao||!bo||ao===bo)return true}return ak.some(k=>bk.has(k))}
 function mergeExtracted(found){let added=0,updated=0;
   for(const original of found){const c=Object.fromEntries(fields.map(f=>[f,typeof original?.[f]==='string'?original[f]:'']));if(!fields.some(f=>c[f].trim()))continue;
     const existing=contacts.find(saved=>sameContact(saved,c));
