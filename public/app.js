@@ -4,7 +4,7 @@ async function scanSections(source){
   await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(new Error('Unable to prepare the selected image.'));if(image.complete&&image.naturalWidth)resolve()});
   const w=image.naturalWidth,h=image.naturalHeight;
   if(h<1000||h/w<1.35)return [source];
-  const sectionHeight=Math.ceil(h*0.61),tops=[0,h-sectionHeight],parts=[];
+  const sectionHeight=Math.ceil(h*0.48),middle=Math.floor((h-sectionHeight)/2),tops=[0,middle,h-sectionHeight],parts=[];
   for(const top of tops){const canvas=document.createElement('canvas');canvas.width=w;canvas.height=sectionHeight;canvas.getContext('2d').drawImage(image,0,top,w,sectionHeight,0,0,w,sectionHeight);parts.push(canvas.toDataURL('image/jpeg',0.86))}
   return parts;
 }
