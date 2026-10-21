@@ -8,8 +8,22 @@ async function scanSections(source){
   for(const top of tops){const canvas=document.createElement('canvas');canvas.width=w;canvas.height=sectionHeight;canvas.getContext('2d').drawImage(image,0,top,w,sectionHeight,0,0,w,sectionHeight);parts.push(canvas.toDataURL('image/jpeg',0.86))}
   return parts;
 }
-function contactKey(c){const email=String(c.email||'').match(/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i)?.[0]?.toLowerCase();if(email)return 'email:'+email;const name=String(c.name||'').trim().toLowerCase(),org=String(c.company||'').trim().toLowerCase();if(name)return 'person:'+name+'|'+org;const phone=String(c.phone||'').replace(/\D/g,'');return phone.length>=7?'phone:'+phone:'anonymous:'+JSON.stringify(c)}
-function mergeExtracted(found){const seen=new Set(contacts.map(contactKey));let added=0;for(const original of found){const c=Object.fromEntries(fields.map(f=>[f,typeof original?.[f]==='string'?original[f]:'']));if(!fields.some(f=>c[f].trim()))continue;const key=contactKey(c);if(seen.has(key))continue;seen.add(key);contacts.push({...c,event:$('event').value.trim(),status:'new',createdAt:new Date().toISOString()});added++}if(added){persist();render()}return added}
+function identityKeys(c){
+  const keys=[];const name=String(c.name||'').trim().replace(/\s+/g,' ').toLowerCase(),org=String(c.company||'').trim().replace(/\s+/g,' ').toLowerCase();
+  if(name&&org)keys.push('person:'+name+'|'+org);
+  for(const email of String(c.email||'').match(/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/gi)||[])keys.push('email:'+email.toLowerCase());
+  for(const {number} of phoneEntries(c.phone)){const digits=number.replace(/\D/g,'');if(digits.length>=7)keys.push('phone:'+digits)}
+  return keys;
+}
+function sameContact(a,b){const ak=identityKeys(a),bk=new Set(identityKeys(b));return ak.some(k=>bk.has(k))}
+function mergeExtracted(found){let added=0,updated=0;
+  for(const original of found){const c=Object.fromEntries(fields.map(f=>[f,typeof original?.[f]==='string'?original[f]:'']));if(!fields.some(f=>c[f].trim()))continue;
+    const existing=contacts.find(saved=>sameContact(saved,c));
+    if(existing){let changed=false;for(const field of fields){if(!String(existing[field]||'').trim()&&c[field].trim()){existing[field]=c[field];changed=true}}if(changed)updated++}
+    else{contacts.push({...c,event:$('event').value.trim(),status:'new',createdAt:new Date().toISOString()});added++}
+  }
+  if(added||updated){persist();render()}return added;
+}
 async function callExtraction(part){const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),58000);try{const response=await fetch('/api/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({images:[part]}),signal:controller.signal});const raw=await response.text();let value;try{value=JSON.parse(raw)}catch{throw new Error('Server returned an invalid response (HTTP '+response.status+').')}if(!response.ok)throw new Error(value.error||'Image extraction failed (HTTP '+response.status+').');if(!Array.isArray(value.contacts))throw new Error('The scanning service returned no contact list.');return value.contacts}finally{clearTimeout(timeout)}}
 $('scan').onclick=async()=>{
   if(!images.length)return message('Select an image first.');
